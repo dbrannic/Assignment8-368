@@ -2,35 +2,31 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#define SIZE 100 // Adjust as needed for the size of your graph
+#define SIZE 100
 
-// Node structure for adjacency list
 struct gnode {
     int label;
     int weight;
     struct gnode* next;
 };
 
-// Node structure for the heap
 struct tnode {
     int label;
     int distance;
     int predecessor;
 };
 
-// Graph and heap structures
 struct gnode* graph[SIZE];
 int heap_index[SIZE];
 
-// Dequeue function for heap (min-heap)
 void dequeue(struct tnode* arr, int n) {
-    struct tnode temp = arr[n]; // Exchange the root and the last node
+    struct tnode temp = arr[n];
     arr[n] = arr[0];
     arr[0] = temp;
-    n--; // Decrease the heap size
+    n--;
     int i = 0, j;
-    while ((j = 2 * i + 1) <= n) { // Left child exists?
-        if (j < n && arr[j].distance > arr[j + 1].distance) // Pick the smaller child
+    while ((j = 2 * i + 1) <= n) {
+        if (j < n && arr[j].distance > arr[j + 1].distance)
             j = j + 1;
         if (temp.distance <= arr[j].distance) break;
         else {
@@ -43,7 +39,6 @@ void dequeue(struct tnode* arr, int n) {
     heap_index[temp.label] = i;
 }
 
-// Update function for upward heapify
 void update(struct tnode* arr, int index) {
     struct tnode temp = arr[index];
     int i = index, parent;
@@ -56,12 +51,10 @@ void update(struct tnode* arr, int index) {
     heap_index[temp.label] = i;
 }
 
-// Dijkstra's algorithm
 void dijkstra(int source) {
     struct tnode arr[SIZE];
     int n = SIZE;
 
-    // Initialize all distances to infinity and predecessors to -1
     for (int i = 0; i < SIZE; i++) {
         arr[i].label = i;
         arr[i].distance = INT_MAX;
@@ -69,35 +62,31 @@ void dijkstra(int source) {
         heap_index[i] = i;
     }
 
-    // Set the source distance to 0
     arr[0].distance = 0;
     arr[0].label = source;
     arr[source].label = 0;
     heap_index[0] = source;
     heap_index[source] = 0;
 
-    // Dijkstra's main loop
     while (n != 0) {
-        dequeue(arr, n - 1); // Remove the node with the smallest distance
+        dequeue(arr, n - 1);
         n--;
         int u = arr[n].label;
         struct gnode* v = graph[u];
 
-        // Explore all neighbors of the current node
         while (v != NULL) {
-            if (heap_index[v->label] < n && // Ensure the neighbor is still in the heap
+            if (heap_index[v->label] < n && 
                 arr[heap_index[v->label]].distance >
                 arr[heap_index[u]].distance + v->weight) {
                 arr[heap_index[v->label]].distance =
                     arr[heap_index[u]].distance + v->weight;
                 arr[heap_index[v->label]].predecessor = u;
-                update(arr, heap_index[v->label]); // Upward heapify
+                update(arr, heap_index[v->label]);
             }
             v = v->next;
         }
     }
 
-    // Print the shortest distances and paths
     printf("Vertex\tDistance\tPath\n");
     for (int i = 0; i < SIZE; i++) {
         if (arr[i].distance == INT_MAX) {
@@ -114,7 +103,6 @@ void dijkstra(int source) {
     }
 }
 
-// Helper function to add an edge to the graph
 void add_edge(int src, int dest, int weight) {
     struct gnode* new_node = (struct gnode*)malloc(sizeof(struct gnode));
     new_node->label = dest;
@@ -124,22 +112,18 @@ void add_edge(int src, int dest, int weight) {
 }
 
 int main() {
-    // Initialize the graph adjacency list
     for (int i = 0; i < SIZE; i++) {
         graph[i] = NULL;
     }
 
-    // Example: Adding edges
     add_edge(0, 1, 4);
     add_edge(0, 2, 1);
     add_edge(2, 1, 2);
     add_edge(1, 3, 1);
     add_edge(2, 3, 5);
 
-    // Run Dijkstra's algorithm from source vertex 0
     dijkstra(0);
 
-    // Free allocated memory
     for (int i = 0; i < SIZE; i++) {
         struct gnode* current = graph[i];
         while (current != NULL) {
