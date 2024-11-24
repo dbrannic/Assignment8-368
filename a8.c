@@ -1,199 +1,153 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <stdbool.h>
 
-#define INF INT_MAX
+#define SIZE 100 // Adjust as needed for the size of your graph
 
-typedef struct {
-    int target;
-    int *weights;
-} Edge;
+// Node structure for adjacency list
+struct gnode {
+    int label;
+    int weight;
+    struct gnode* next;
+};
 
-typedef struct {
-    int vertices;
-    int period;
-    int *edge_count;
-    Edge **adj_list;
-} Graph;
+// Node structure for the heap
+struct tnode {
+    int label;
+    int distance;
+    int predecessor;
+};
 
-// Create the graph structure
-Graph *create_graph(int vertices, int period) {
-    Graph *graph = (Graph *)malloc(sizeof(Graph));
-    if (!graph) {
-        fprintf(stderr, "Memory allocation failed for graph\n");
-        exit(EXIT_FAILURE);
-    }
+// Graph and heap structures
+struct gnode* graph[SIZE];
+int heap_index[SIZE];
 
-    graph->vertices = vertices;
-    graph->period = period;
-    graph->edge_count = (int *)calloc(vertices, sizeof(int));
-    graph->adj_list = (Edge **)malloc(vertices * sizeof(Edge *));
-    if (!graph->edge_count || !graph->adj_list) {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < vertices; i++) {
-        graph->adj_list[i] = NULL;
-    }
-    return graph;
-}
-
-// Add an edge to the graph
-void add_edge(Graph *graph, int src, int target, int *weights) {
-    int count = graph->edge_count[src];
-    Edge *new_edges = (Edge *)realloc(graph->adj_list[src], (count + 1) * sizeof(Edge));
-    if (!new_edges) {
-        fprintf(stderr, "Memory allocation failed in add_edge\n");
-        exit(EXIT_FAILURE);
-    }
-    graph->adj_list[src] = new_edges;
-    graph->adj_list[src][count].target = target;
-    graph->adj_list[src][count].weights = weights;
-    graph->edge_count[src]++;
-}
-
-// Find the vertex with the minimum distance
-int min_distance(int *dist, bool *visited, int vertices) {
-    int min = INF, min_index = -1;
-    for (int i = 0; i < vertices; i++) {
-        if (!visited[i] && dist[i] < min) {
-            min = dist[i];
-            min_index = i;
+// Dequeue function for heap (min-heap)
+void dequeue(struct tnode* arr, int n) {
+    struct tnode temp = arr[n]; // Exchange the root and the last node
+    arr[n] = arr[0];
+    arr[0] = temp;
+    n--; // Decrease the heap size
+    int i = 0, j;
+    while ((j = 2 * i + 1) <= n) { // Left child exists?
+        if (j < n && arr[j].distance > arr[j + 1].distance) // Pick the smaller child
+            j = j + 1;
+        if (temp.distance <= arr[j].distance) break;
+        else {
+            arr[i] = arr[j];
+            heap_index[arr[j].label] = i;
+            i = j;
         }
     }
-    return min_index;
+    arr[i] = temp;
+    heap_index[temp.label] = i;
 }
 
-// Print the path
-void print_path(int *parent, int target) {
-    if (parent[target] == -1) {
-        printf("%d", target);
-        return;
+// Update function for upward heapify
+void update(struct tnode* arr, int index) {
+    struct tnode temp = arr[index];
+    int i = index, parent;
+    while (i > 0 && temp.distance < arr[(parent = (i - 1) / 2)].distance) {
+        arr[i] = arr[parent];
+        heap_index[arr[parent].label] = i;
+        i = parent;
     }
-    print_path(parent, parent[target]);
-    printf(" %d", target);
+    arr[i] = temp;
+    heap_index[temp.label] = i;
 }
 
-// Compute shortest path
-void shortest_path(Graph *graph, int start, int end) {
-    int vertices = graph->vertices;
-    int period = graph->period;
+// Dijkstra's algorithm
+void dijkstra(int source) {
+    struct tnode arr[SIZE];
+    int n = SIZE;
 
-    int *dist = (int *)malloc(vertices * sizeof(int));
-    bool *visited = (bool *)calloc(vertices, sizeof(bool));
-    int *parent = (int *)malloc(vertices * sizeof(int));
-
-    if (!dist || !visited || !parent) {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(EXIT_FAILURE);
+    // Initialize all distances to infinity and predecessors to -1
+    for (int i = 0; i < SIZE; i++) {
+        arr[i].label = i;
+        arr[i].distance = INT_MAX;
+        arr[i].predecessor = -1;
+        heap_index[i] = i;
     }
 
-    for (int i = 0; i < vertices; i++) {
-        dist[i] = INF;
-        parent[i] = -1;
-    }
+    // Set the source distance to 0
+    arr[0].distance = 0;
+    arr[0].label = source;
+    arr[source].label = 0;
+    heap_index[0] = source;
+    heap_index[source] = 0;
 
-    dist[start] = 0;
+    // Dijkstra's main loop
+    while (n != 0) {
+        dequeue(arr, n - 1); // Remove the node with the smallest distance
+        n--;
+        int u = arr[n].label;
+        struct gnode* v = graph[u];
 
-    for (int step = 0; step < vertices - 1; step++) {
-        int u = min_distance(dist, visited, vertices);
-        if (u == -1) break;
-        visited[u] = true;
-
-        for (int i = 0; i < graph->edge_count[u]; i++) {
-            Edge edge = graph->adj_list[u][i];
-            int v = edge.target;
-            int weight = edge.weights[step % period];
-
-            if (!visited[v] && dist[u] != INF && dist[u] + weight < dist[v]) {
-                dist[v] = dist[u] + weight;
-                parent[v] = u;
+        // Explore all neighbors of the current node
+        while (v != NULL) {
+            if (heap_index[v->label] < n && // Ensure the neighbor is still in the heap
+                arr[heap_index[v->label]].distance >
+                arr[heap_index[u]].distance + v->weight) {
+                arr[heap_index[v->label]].distance =
+                    arr[heap_index[u]].distance + v->weight;
+                arr[heap_index[v->label]].predecessor = u;
+                update(arr, heap_index[v->label]); // Upward heapify
             }
+            v = v->next;
         }
     }
 
-    if (dist[end] == INF) {
-        printf("No path between %d and %d\n", start, end);
-    } else {
-        print_path(parent, end);
-        printf("\n");
+    // Print the shortest distances and paths
+    printf("Vertex\tDistance\tPath\n");
+    for (int i = 0; i < SIZE; i++) {
+        if (arr[i].distance == INT_MAX) {
+            printf("%d\tINF\t-\n", i);
+        } else {
+            printf("%d\t%d\t", i, arr[i].distance);
+            int path_node = i;
+            while (path_node != -1) {
+                printf("%d ", path_node);
+                path_node = arr[heap_index[path_node]].predecessor;
+            }
+            printf("\n");
+        }
     }
-
-    free(dist);
-    free(visited);
-    free(parent);
 }
 
-// Free all dynamically allocated memory
-void free_graph(Graph *graph) {
-    for (int i = 0; i < graph->vertices; i++) {
-        for (int j = 0; j < graph->edge_count[i]; j++) {
-            free(graph->adj_list[i][j].weights);
-        }
-        free(graph->adj_list[i]);
-    }
-    free(graph->adj_list);
-    free(graph->edge_count);
-    free(graph);
+// Helper function to add an edge to the graph
+void add_edge(int src, int dest, int weight) {
+    struct gnode* new_node = (struct gnode*)malloc(sizeof(struct gnode));
+    new_node->label = dest;
+    new_node->weight = weight;
+    new_node->next = graph[src];
+    graph[src] = new_node;
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <graph file>\n", argv[0]);
-        return 1;
+int main() {
+    // Initialize the graph adjacency list
+    for (int i = 0; i < SIZE; i++) {
+        graph[i] = NULL;
     }
 
-    FILE *file = fopen(argv[1], "r");
-    if (!file) {
-        perror("Error opening file");
-        return 1;
-    }
+    // Example: Adding edges
+    add_edge(0, 1, 4);
+    add_edge(0, 2, 1);
+    add_edge(2, 1, 2);
+    add_edge(1, 3, 1);
+    add_edge(2, 3, 5);
 
-    int V, N;
-    if (fscanf(file, "%d %d", &V, &N) != 2) {
-        fprintf(stderr, "Invalid graph file format\n");
-        fclose(file);
-        return 1;
-    }
-    Graph *graph = create_graph(V, N);
+    // Run Dijkstra's algorithm from source vertex 0
+    dijkstra(0);
 
-    int src, target;
-    while (fscanf(file, "%d %d", &src, &target) == 2) {
-        int *weights = (int *)malloc(N * sizeof(int));
-        if (!weights) {
-            fprintf(stderr, "Memory allocation failed for weights\n");
-            fclose(file);
-            free_graph(graph);
-            return 1;
-        }
-        for (int i = 0; i < N; i++) {
-            if (fscanf(file, "%d", &weights[i]) != 1) {
-                fprintf(stderr, "Invalid graph file format\n");
-                fclose(file);
-                free(weights);
-                free_graph(graph);
-                return 1;
-            }
-        }
-        add_edge(graph, src, target, weights);
-    }
-
-    fclose(file);
-
-    char query[100];
-    while (fgets(query, sizeof(query), stdin)) {
-        int start, end;
-        if (sscanf(query, "%d %d", &start, &end) == 2) {
-            if (start < 0 || start >= V || end < 0 || end >= V) {
-                printf("Invalid query: %d %d\n", start, end);
-            } else {
-                shortest_path(graph, start, end);
-            }
+    // Free allocated memory
+    for (int i = 0; i < SIZE; i++) {
+        struct gnode* current = graph[i];
+        while (current != NULL) {
+            struct gnode* temp = current;
+            current = current->next;
+            free(temp);
         }
     }
 
-    free_graph(graph);
     return 0;
 }
