@@ -19,36 +19,44 @@ struct tnode {
 struct gnode* graph[SIZE];
 int heap_index[SIZE];
 
-void dequeue(struct tnode* arr, int n) {
-    struct tnode temp = arr[n];
-    arr[n] = arr[0];
-    arr[0] = temp;
-    n--;
-    int i = 0, j;
-    while ((j = 2 * i + 1) <= n) {
-        if (j < n && arr[j].distance > arr[j + 1].distance)
-            j = j + 1;
-        if (temp.distance <= arr[j].distance) break;
-        else {
-            arr[i] = arr[j];
-            heap_index[arr[j].label] = i;
-            i = j;
-        }
-    }
-    arr[i] = temp;
-    heap_index[temp.label] = i;
+void swap(struct tnode* arr, int i, int j) {
+    struct tnode temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
+    heap_index[arr[i].label] = i;
+    heap_index[arr[j].label] = j;
 }
 
-void update(struct tnode* arr, int index) {
-    struct tnode temp = arr[index];
-    int i = index, parent;
-    while (i > 0 && temp.distance < arr[(parent = (i - 1) / 2)].distance) {
-        arr[i] = arr[parent];
-        heap_index[arr[parent].label] = i;
+void heapify_down(struct tnode* arr, int n, int i) {
+    int smallest = i;
+    int left = 2 * i + 1;
+    int right = 2 * i + 2;
+
+    if (left < n && arr[left].distance < arr[smallest].distance)
+        smallest = left;
+    if (right < n && arr[right].distance < arr[smallest].distance)
+        smallest = right;
+
+    if (smallest != i) {
+        swap(arr, i, smallest);
+        heapify_down(arr, n, smallest);
+    }
+}
+
+void heapify_up(struct tnode* arr, int i) {
+    while (i > 0) {
+        int parent = (i - 1) / 2;
+        if (arr[i].distance >= arr[parent].distance)
+            break;
+        swap(arr, i, parent);
         i = parent;
     }
-    arr[i] = temp;
-    heap_index[temp.label] = i;
+}
+
+void dequeue(struct tnode* arr, int* n) {
+    swap(arr, 0, *n - 1);
+    (*n)--;
+    heapify_down(arr, *n, 0);
 }
 
 void dijkstra(int source) {
@@ -63,25 +71,19 @@ void dijkstra(int source) {
     }
 
     arr[0].distance = 0;
-    arr[0].label = source;
-    arr[source].label = 0;
-    heap_index[0] = source;
-    heap_index[source] = 0;
+    swap(arr, 0, source);
 
-    while (n != 0) {
-        dequeue(arr, n - 1);
-        n--;
-        int u = arr[n].label;
+    while (n > 0) {
+        int u = arr[0].label;
+        dequeue(arr, &n);
         struct gnode* v = graph[u];
-
         while (v != NULL) {
-            if (heap_index[v->label] < n && 
-                arr[heap_index[v->label]].distance >
-                arr[heap_index[u]].distance + v->weight) {
-                arr[heap_index[v->label]].distance =
-                    arr[heap_index[u]].distance + v->weight;
-                arr[heap_index[v->label]].predecessor = u;
-                update(arr, heap_index[v->label]);
+            int v_index = heap_index[v->label];
+            if (v_index < n &&
+                arr[v_index].distance > arr[heap_index[u]].distance + v->weight) {
+                arr[v_index].distance = arr[heap_index[u]].distance + v->weight;
+                arr[v_index].predecessor = u;
+                heapify_up(arr, v_index);
             }
             v = v->next;
         }
