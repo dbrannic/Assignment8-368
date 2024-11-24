@@ -17,6 +17,7 @@ typedef struct {
     Edge **adj_list;
 } Graph;
 
+// Create the graph structure
 Graph *create_graph(int vertices, int period) {
     Graph *graph = (Graph *)malloc(sizeof(Graph));
     if (!graph) {
@@ -39,6 +40,7 @@ Graph *create_graph(int vertices, int period) {
     return graph;
 }
 
+// Add an edge to the graph
 void add_edge(Graph *graph, int src, int target, int *weights) {
     int count = graph->edge_count[src];
     Edge *new_edges = (Edge *)realloc(graph->adj_list[src], (count + 1) * sizeof(Edge));
@@ -52,6 +54,7 @@ void add_edge(Graph *graph, int src, int target, int *weights) {
     graph->edge_count[src]++;
 }
 
+// Find the vertex with the minimum distance
 int min_distance(int *dist, bool *visited, int vertices) {
     int min = INF, min_index = -1;
     for (int i = 0; i < vertices; i++) {
@@ -63,6 +66,7 @@ int min_distance(int *dist, bool *visited, int vertices) {
     return min_index;
 }
 
+// Print the path
 void print_path(int *parent, int target) {
     if (parent[target] == -1) {
         printf("%d", target);
@@ -72,6 +76,7 @@ void print_path(int *parent, int target) {
     printf(" %d", target);
 }
 
+// Compute shortest path
 void shortest_path(Graph *graph, int start, int end) {
     int vertices = graph->vertices;
     int period = graph->period;
@@ -121,6 +126,7 @@ void shortest_path(Graph *graph, int start, int end) {
     free(parent);
 }
 
+// Free all dynamically allocated memory
 void free_graph(Graph *graph) {
     for (int i = 0; i < graph->vertices; i++) {
         for (int j = 0; j < graph->edge_count[i]; j++) {
