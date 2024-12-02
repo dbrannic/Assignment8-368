@@ -24,7 +24,6 @@ Graph *create_graph(int vertices, int period) {
     graph->period = period;
     graph->edge_count = (int *)calloc(vertices, sizeof(int));
     graph->adj_list = (Edge **)malloc(vertices * sizeof(Edge *));
-
     for (int i = 0; i < vertices; i++) {
         graph->adj_list[i] = NULL;
     }
@@ -88,7 +87,7 @@ void shortest_path(Graph *graph, int start, int end) {
         for (int i = 0; i < graph->edge_count[u]; i++) {
             Edge edge = graph->adj_list[u][i];
             int v = edge.target;
-            int weight = edge.weights[step % period];
+            int weight = edge.weights[(dist[u] % period)];
 
             if (!visited[v] && dist[u] != INF && dist[u] + weight < dist[v]) {
                 dist[v] = dist[u] + weight;
@@ -108,7 +107,6 @@ void shortest_path(Graph *graph, int start, int end) {
     free(visited);
     free(parent);
 }
-
 
 void free_graph(Graph *graph) {
     for (int i = 0; i < graph->vertices; i++) {
