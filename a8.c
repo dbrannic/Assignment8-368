@@ -3,7 +3,6 @@
 #include <limits.h>
 #include <stdbool.h>
 
-#define MAX_VERTICES 1000
 #define INF INT_MAX
 
 typedef struct {
@@ -20,10 +19,18 @@ typedef struct {
 
 Graph *create_graph(int vertices, int period) {
     Graph *graph = (Graph *)malloc(sizeof(Graph));
+    if (!graph) {
+        fprintf(stderr, "Error allocating memory for graph\n");
+        exit(EXIT_FAILURE);
+    }
     graph->vertices = vertices;
     graph->period = period;
     graph->edge_count = (int *)calloc(vertices, sizeof(int));
     graph->adj_list = (Edge **)malloc(vertices * sizeof(Edge *));
+    if (!graph->edge_count || !graph->adj_list) {
+        fprintf(stderr, "Error allocating memory for graph components\n");
+        exit(EXIT_FAILURE);
+    }
     for (int i = 0; i < vertices; i++) {
         graph->adj_list[i] = NULL;
     }
@@ -33,6 +40,10 @@ Graph *create_graph(int vertices, int period) {
 void add_edge(Graph *graph, int src, int target, int *weights) {
     int count = graph->edge_count[src];
     graph->adj_list[src] = (Edge *)realloc(graph->adj_list[src], (count + 1) * sizeof(Edge));
+    if (!graph->adj_list[src]) {
+        fprintf(stderr, "Error reallocating memory for edges\n");
+        exit(EXIT_FAILURE);
+    }
     graph->adj_list[src][count].target = target;
     graph->adj_list[src][count].weights = weights;
     graph->edge_count[src]++;
@@ -133,14 +144,26 @@ int main(int argc, char *argv[]) {
     }
 
     int V, N;
-    fscanf(file, "%d %d", &V, &N);
+    if (fscanf(file, "%d %d", &V, &N) != 2) {
+        fprintf(stderr, "Error reading graph dimensions\n");
+        fclose(file);
+        return 1;
+    }
+
     Graph *graph = create_graph(V, N);
 
     int src, target;
     while (fscanf(file, "%d %d", &src, &target) == 2) {
         int *weights = (int *)malloc(N * sizeof(int));
+        if (!weights) {
+            fprintf(stderr, "Error allocating memory for weights\n");
+            exit(EXIT_FAILURE);
+        }
         for (int i = 0; i < N; i++) {
-            fscanf(file, "%d", &weights[i]);
+            if (fscanf(file, "%d", &weights[i]) != 1) {
+                fprintf(stderr, "Error reading weights\n");
+                exit(EXIT_FAILURE);
+            }
         }
         add_edge(graph, src, target, weights);
     }
@@ -152,6 +175,8 @@ int main(int argc, char *argv[]) {
         int start, end;
         if (sscanf(query, "%d %d", &start, &end) == 2) {
             shortest_path(graph, start, end);
+        } else {
+            fprintf(stderr, "Invalid query format\n");
         }
     }
 
